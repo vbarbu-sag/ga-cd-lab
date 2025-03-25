@@ -2,16 +2,21 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0.2"
+      version = "~> 3.88.0"
+    }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 2.45.0"
     }
   }
-
   required_version = ">= 1.1.0"
 }
 
 provider "azurerm" {
   features {}
 }
+
+data "azurerm_client_config" "current" {}
 
 resource "azurerm_resource_group" "rg" {
   name     = "ga-cd-lab"
@@ -35,7 +40,6 @@ resource "azurerm_linux_web_app" "api" {
   app_settings = {
     "ASPNETCORE_ENVIRONMENT" = "Production"
   }
-
   site_config {
     minimum_tls_version = "1.2"
     always_on           = false
@@ -50,7 +54,7 @@ resource "azuread_application" "github_actions" {
 }
 
 resource "azuread_service_principal" "github_actions" {
-  client_id = azuread_application.github_actions.application_id
+  client_id = azuread_application.github_actions.client_id
 }
 
 resource "azuread_service_principal_password" "github_actions" {
@@ -64,7 +68,7 @@ resource "azurerm_role_assignment" "github_actions" {
 }
 
 output "client_id" {
-  value     = azuread_application.github_actions.application_id
+  value     = azuread_application.github_actions.client_id
   sensitive = true
 }
 
