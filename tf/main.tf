@@ -39,5 +39,46 @@ resource "azurerm_linux_web_app" "api" {
   site_config {
     minimum_tls_version = "1.2"
     always_on           = false
+    application_stack {
+      dotnet_version = "9.0"
+    }
   }
+}
+
+resource "azuread_application" "github_actions" {
+  display_name = "GithubActions-DeployApp"
+}
+
+resource "azuread_service_principal" "github_actions" {
+  client_id = azuread_application.github_actions.application_id
+}
+
+resource "azuread_service_principal_password" "github_actions" {
+  service_principal_id = azuread_service_principal.github_actions.id
+}
+
+resource "azurerm_role_assignment" "github_actions" {
+  scope                = azurerm_resource_group.rg.id
+  role_definition_name = "Contributor"
+  principal_id         = azuread_service_principal.github_actions.id
+}
+
+output "client_id" {
+  value     = azuread_application.github_actions.application_id
+  sensitive = true
+}
+
+output "client_secret" {
+  value     = azuread_service_principal_password.github_actions.value
+  sensitive = true
+}
+
+output "tenant_id" {
+  value     = data.azurerm_client_config.current.tenant_id
+  sensitive = true
+}
+
+output "subscription_id" {
+  value     = data.azurerm_client_config.current.subscription_id
+  sensitive = true
 }
