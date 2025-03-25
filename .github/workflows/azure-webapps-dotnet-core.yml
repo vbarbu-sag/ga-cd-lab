@@ -2,7 +2,7 @@ name: Build and deploy ASP.Net Core app to an Azure Web App
 
 env:
   AZURE_WEBAPP_NAME: ga-cd-lab-api
-  AZURE_WEBAPP_PACKAGE_PATH: '.'
+  AZURE_WEBAPP_PACKAGE_PATH: 'api'
   DOTNET_VERSION: '9'
 
 on:
@@ -37,7 +37,7 @@ jobs:
         run: dotnet build api --configuration Release
 
       - name: dotnet publish
-        run: dotnet publish api -c Release -o ${{env.DOTNET_ROOT}}/api
+        run: dotnet publish api -c Release -r linux-x64 -o ${{env.DOTNET_ROOT}}/api
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
@@ -59,6 +59,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: .net-app
+          path: ${{ env.AZURE_WEBAPP_PACKAGE_PATH }}
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp

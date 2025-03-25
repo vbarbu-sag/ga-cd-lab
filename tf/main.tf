@@ -32,6 +32,9 @@ resource "azurerm_linux_web_app" "api" {
   service_plan_id     = azurerm_service_plan.asp.id
   https_only          = true
   resource_group_name = azurerm_resource_group.rg.name
+  app_settings = {
+    "ASPNETCORE_ENVIRONMENT" = "Production"
+  }
 
   site_config {
     minimum_tls_version = "1.2"
