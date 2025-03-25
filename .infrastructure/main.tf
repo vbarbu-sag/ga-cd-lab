@@ -4,10 +4,6 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 4.24.0"
     }
-    azuread = {
-      source  = "hashicorp/azuread"
-      version = "~> 3.2.0"
-    }
   }
   required_version = ">= 1.1.0"
 }
@@ -15,11 +11,6 @@ terraform {
 provider "azurerm" {
   features {}
 }
-
-provider "azuread" {
-}
-
-data "azurerm_client_config" "current" {}
 
 resource "azurerm_resource_group" "rg" {
   name     = "ga-cd-lab"
@@ -52,40 +43,3 @@ resource "azurerm_linux_web_app" "api" {
   }
 }
 
-resource "azuread_application" "github_actions" {
-  display_name = "GithubActions-DeployApp"
-}
-
-resource "azuread_service_principal" "github_actions" {
-  client_id = azuread_application.github_actions.client_id
-}
-
-resource "azuread_service_principal_password" "github_actions" {
-  service_principal_id = azuread_service_principal.github_actions.id
-}
-
-resource "azurerm_role_assignment" "github_actions" {
-  scope                = azurerm_resource_group.rg.id
-  role_definition_name = "Contributor"
-  principal_id         = azuread_service_principal.github_actions.id
-}
-
-output "client_id" {
-  value     = azuread_application.github_actions.client_id
-  sensitive = true
-}
-
-output "client_secret" {
-  value     = azuread_service_principal_password.github_actions.value
-  sensitive = true
-}
-
-output "tenant_id" {
-  value     = data.azurerm_client_config.current.tenant_id
-  sensitive = true
-}
-
-output "subscription_id" {
-  value     = data.azurerm_client_config.current.subscription_id
-  sensitive = true
-}
