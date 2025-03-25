@@ -3,7 +3,7 @@ import './App.css'
 
 async function getWeatherForecast() {
   try {
-    const resp = await fetch(`${import.meta.env.API_URL}/weatherforecast`);
+    const resp = await fetch(`${import.meta.env.API_URL || ''}/weatherforecast`);
     const forecast = await resp.json();
     return forecast;
   } catch (e) {
