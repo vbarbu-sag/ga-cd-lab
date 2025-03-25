@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 
-const baseUrl = "http://localhost:5236";
-
 async function getWeatherForecast() {
   try {
-    const resp = await fetch(`${baseUrl}/weatherforecast`);
+    const resp = await fetch(`${import.meta.env.API_URL}/weatherforecast`);
     const forecast = await resp.json();
     return forecast;
   } catch (e) {

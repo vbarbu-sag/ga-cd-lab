@@ -43,3 +43,28 @@ resource "azurerm_linux_web_app" "api" {
   }
 }
 
+resource "azurerm_linux_web_app" "app" {
+  name                = "ga-cd-lab-app"
+  location            = azurerm_resource_group.rg.location
+  service_plan_id     = azurerm_service_plan.asp.id
+  https_only          = true
+  resource_group_name = azurerm_resource_group.rg.name
+
+  app_settings = {
+    "WEBSITES_ENABLE_APP_SERVICE_STORAGE" = "true"
+    "API_URL"                             = "https://${azurerm_linux_web_app.api.default_hostname}"
+  }
+
+  site_config {
+    minimum_tls_version = "1.2"
+    always_on           = false
+
+    application_stack {
+      node_version = "22-lts"
+    }
+
+    cors {
+      allowed_origins = ["https://${azurerm_linux_web_app.api.default_hostname}"]
+    }
+  }
+}
