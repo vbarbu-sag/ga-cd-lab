@@ -1,12 +1,12 @@
 name: API - Build & Deploy Production
 
 env:
-  AZURE_WEBAPP_NAME: ga-cd-lab-api
+  AZURE_WEBAPP_NAME: ga-cd-lab-api-prod
   AZURE_WEBAPP_PACKAGE_PATH: "api"
   DOTNET_VERSION: "9"
   ENVIRONMENT: "prod"
   # for testing purposes only -> will be stored & retrieved from az key vault in the future
-  DB_CONNECTION_STRING: "Server=tcp:ga-cd-lab-sql.database.windows.net,1433;Initial Catalog=ga-cd-lab-db;Persist Security Info=False;User ID=sqladmin;Password=P@ssw0rd1234!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+  DB_CONNECTION_STRING: "Server=tcp:ga-cd-lab-sql-prod.database.windows.net,1433;Initial Catalog=ga-cd-lab-db-prod;Persist Security Info=False;User ID=sqladmin;Password=P@ssw0rd1234!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
 
 on:
   workflow_dispatch:
