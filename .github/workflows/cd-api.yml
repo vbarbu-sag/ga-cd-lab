@@ -1,11 +1,11 @@
-name: API - Build & Deploy
+name: Api - Build & Deploy
 env:
   AZURE_WEBAPP_NAME: ga-cd-lab-api
-  AZURE_WEBAPP_PACKAGE_PATH: 'api'
-  DOTNET_VERSION: '9'
+  AZURE_WEBAPP_PACKAGE_PATH: "api"
+  DOTNET_VERSION: "9"
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
   workflow_dispatch:
 permissions:
   contents: read
@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     environment:
-      name: 'Development'
+      name: "Development"
       url: ${{ steps.deploy-to-webapp.outputs.webapp-url }}
     steps:
       - name: Download artifact from build job
