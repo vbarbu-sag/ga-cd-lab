@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write # allow committing state file (testing purposes)
 
 jobs:
   check-changes:
@@ -47,6 +47,9 @@ jobs:
     if: needs.check-changes.outputs.infrastructure_changed == 'true' || github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
@@ -62,9 +65,24 @@ jobs:
         run: terraform init
         working-directory: ./.infrastructure
 
+      - name: Terraform Import Resource Group (if needed)
+        continue-on-error: true
+        run: |
+          terraform import azurerm_resource_group.rg /subscriptions/${{ env.ARM_SUBSCRIPTION_ID }}/resourceGroups/ga-cd-lab-dev
+        working-directory: ./.infrastructure
+
       - name: Terraform Apply
         run: terraform apply -auto-approve -var-file=environments/dev.tfvars
         working-directory: ./.infrastructure
+
+      - name: Commit updated state file
+        if: success()
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add .infrastructure/terraform.tfstate*
+          git commit -m "Update Terraform state [skip ci]" || echo "No changes to commit"
+          git push
 
   database-migration:
     runs-on: ubuntu-latest

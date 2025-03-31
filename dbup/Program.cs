@@ -33,7 +33,7 @@ class Program
         if (scriptsOnly && !string.IsNullOrEmpty(outputFile))
         {
             var engine = upgradeEngineBuilder.Build();
-            var script = engine.GenerateUpgradeHint();
+            var script = string.Join("\n", engine.GetScriptsToExecute());
             File.WriteAllText(outputFile, script);
             Console.WriteLine($"Generated migration script to: {outputFile}");
             return 0;
