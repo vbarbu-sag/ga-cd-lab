@@ -1,0 +1,68 @@
+name: Version Tagging and Branch Sync
+
+on:
+  push:
+    branches: ["master"]
+
+permissions:
+  contents: write
+
+jobs:
+  tag-and-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Get latest version
+        id: get-latest-tag
+        run: |
+          git fetch --tags
+          LATEST_TAG=$(git tag --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || echo "0.0.0")
+          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_ENV
+
+          # Parse version components
+          MAJOR=$(echo $LATEST_TAG | cut -d. -f1)
+          MINOR=$(echo $LATEST_TAG | cut -d. -f2)
+          PATCH=$(echo $LATEST_TAG | cut -d. -f3)
+
+          # Increment patch version
+          PATCH=$((PATCH + 1))
+
+          # Create new version
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          echo "NEW_VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ env.NEW_VERSION }}
+          git push origin ${{ env.NEW_VERSION }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ env.NEW_VERSION }}
+          name: "Release ${{ env.NEW_VERSION }}"
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge master into release
+        run: |
+          git checkout release
+          git merge --no-ff master -m "Merge master into release after release ${{ env.NEW_VERSION }}"
+          git push origin release
+
+      - name: Merge release into develop
+        run: |
+          git checkout develop
+          git merge --no-ff release -m "Merge release into develop after release ${{ env.NEW_VERSION }}"
+          git push origin develop
