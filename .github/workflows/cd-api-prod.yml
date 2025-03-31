@@ -4,6 +4,7 @@ env:
   AZURE_WEBAPP_NAME: ga-cd-lab-api
   AZURE_WEBAPP_PACKAGE_PATH: "api"
   DOTNET_VERSION: "9"
+  ENVIRONMENT: "prod"
   # for testing purposes only -> will be stored & retrieved from az key vault in the future
   DB_CONNECTION_STRING: "Server=tcp:ga-cd-lab-sql.database.windows.net,1433;Initial Catalog=ga-cd-lab-db;Persist Security Info=False;User ID=sqladmin;Password=P@ssw0rd1234!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
 
@@ -55,8 +56,15 @@ jobs:
           echo "ARM_CLIENT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)" >> $GITHUB_ENV
           echo "ARM_CLIENT_SECRET=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientSecret)" >> $GITHUB_ENV
 
-      - name: Terraform Init
-        run: terraform init
+      - name: Terraform Init with Prod Backend
+        run: |
+          # Initialize with specific state file for prod
+          terraform init -force-copy -backend-config="path=prod.terraform.tfstate"
+        working-directory: ./.infrastructure
+
+      - name: Select or Create Prod Workspace
+        run: |
+          terraform workspace select prod || terraform workspace new prod
         working-directory: ./.infrastructure
 
       - name: Terraform Import Resource Group (if needed)
@@ -65,13 +73,15 @@ jobs:
           terraform import azurerm_resource_group.rg /subscriptions/${{ env.ARM_SUBSCRIPTION_ID }}/resourceGroups/ga-cd-lab-prod
         working-directory: ./.infrastructure
 
-      # plan step review
+      # plan step for review
       - name: Terraform Plan
-        run: terraform plan -var-file=environments/prod.tfvars -out=tfplan
+        run: |
+          terraform plan -var-file=environments/prod.tfvars -var="environment=prod" -out=tfplan
         working-directory: ./.infrastructure
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve tfplan
+        run: |
+          terraform apply -auto-approve tfplan
         working-directory: ./.infrastructure
 
       - name: Commit updated state file
@@ -79,8 +89,9 @@ jobs:
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          git add .infrastructure/terraform.tfstate*
-          git commit -m "Update Terraform state [skip ci]" || echo "No changes to commit"
+          find .infrastructure -name "*.tfstate*" -exec git add {} \;
+          find .infrastructure -name "workspace*" -exec git add {} \;
+          git commit -m "Update Prod Terraform state [skip ci]" || echo "No changes to commit"
           git push
 
   database-migration:

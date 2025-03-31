@@ -4,6 +4,7 @@ env:
   AZURE_WEBAPP_NAME: ga-cd-lab-api-dev
   AZURE_WEBAPP_PACKAGE_PATH: "api"
   DOTNET_VERSION: "9"
+  ENVIRONMENT: "dev"
   # for testing purposes only -> will be stored & retrieved from az key vault in the future
   DB_CONNECTION_STRING: "Server=tcp:ga-cd-lab-sql-dev.database.windows.net,1433;Initial Catalog=ga-cd-lab-db-dev;Persist Security Info=False;User ID=sqladmin;Password=P@ssw0rd1234!;MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
 
@@ -61,8 +62,20 @@ jobs:
           echo "ARM_CLIENT_ID=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientId)" >> $GITHUB_ENV
           echo "ARM_CLIENT_SECRET=$(echo '${{ secrets.AZURE_CREDENTIALS }}' | jq -r .clientSecret)" >> $GITHUB_ENV
 
-      - name: Terraform Init
-        run: terraform init
+      - name: Debug - List existing state files
+        run: |
+          echo "Listing files in .infrastructure before init:"
+          ls -la .infrastructure/
+        working-directory: ./
+
+      - name: Terraform Init with Dev Backend
+        run: |
+          terraform init -force-copy -backend-config="path=dev.terraform.tfstate"
+        working-directory: ./.infrastructure
+
+      - name: Select or Create Dev Workspace
+        run: |
+          terraform workspace select dev || terraform workspace new dev
         working-directory: ./.infrastructure
 
       - name: Terraform Import Resource Group (if needed)
@@ -72,16 +85,26 @@ jobs:
         working-directory: ./.infrastructure
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -var-file=environments/dev.tfvars
+        run: |
+          terraform apply -auto-approve -var-file=environments/dev.tfvars -var="environment=dev"
         working-directory: ./.infrastructure
+
+      - name: Debug - List state files after apply
+        run: |
+          echo "Listing files in .infrastructure after apply:"
+          ls -la .infrastructure/
+          echo "Looking for tfstate files:"
+          find . -name "*.tfstate*"
+        working-directory: ./
 
       - name: Commit updated state file
         if: success()
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          git add .infrastructure/terraform.tfstate*
-          git commit -m "Update Terraform state [skip ci]" || echo "No changes to commit"
+          find .infrastructure -name "*.tfstate*" -exec git add {} \;
+          find .infrastructure -name "workspace*" -exec git add {} \;
+          git commit -m "Update Dev Terraform state [skip ci]" || echo "No changes to commit"
           git push
 
   database-migration:
