@@ -1,4 +1,10 @@
+using Dapper;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSingleton<Db>();
 
 builder.Services.AddOpenApi();
 builder.Services.AddCors();
@@ -12,11 +18,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors(builder =>
+app.UseCors(c =>
 {
-    builder.AllowAnyOrigin();
-    builder.AllowAnyHeader();
-    builder.AllowAnyMethod();
+    c.AllowAnyOrigin();
+    c.AllowAnyHeader();
+    c.AllowAnyMethod();
 });
 
 var summaries = new[]
@@ -27,20 +33,50 @@ var summaries = new[]
 app.MapGet("/weatherforecast", () =>
 {
     var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
+            new WeatherForecast
+            (
+                DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+                Random.Shared.Next(-20, 55),
+                summaries[Random.Shared.Next(summaries.Length)]
+            ))
         .ToArray();
     return forecast;
-})
-.WithName("GetWeatherForecast");
+});
+
+
+app.MapPost("/query", async ([FromBody] Query q, Db db) =>
+{
+    var result = await db.QueryAsync<object>(q.Sql);
+    return Results.Ok(result);
+});
 
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
+public record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
 {
     public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
+}
+
+public record Query(string Sql);
+
+public class Db
+{
+    private readonly string _connectionString;
+
+    public Db(IConfiguration configuration)
+    {
+        _connectionString = configuration.GetConnectionString("DefaultConnection") 
+            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+    }
+
+    private SqlConnection CreateConnection()
+    {
+        return new SqlConnection(_connectionString);
+    }
+
+    public async Task<IEnumerable<T>> QueryAsync<T>(string sql)
+    {
+        await using var connection = CreateConnection();
+        return await connection.QueryAsync<T>(sql);
+    }
 }
