@@ -61,17 +61,17 @@ public record Query(string Sql);
 
 public class Db
 {
-    private readonly string _connectionString;
+    private readonly string _connString;
 
     public Db(IConfiguration configuration)
     {
-        _connectionString = configuration.GetConnectionString("DefaultConnection") 
+        _connString = configuration.GetConnectionString("DefaultConnection") 
             ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
     }
 
     private SqlConnection CreateConnection()
     {
-        return new SqlConnection(_connectionString);
+        return new SqlConnection(_connString);
     }
 
     public async Task<IEnumerable<T>> QueryAsync<T>(string sql)
